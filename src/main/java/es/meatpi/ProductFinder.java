@@ -23,36 +23,38 @@ class ProductFinder {
         this.base = base;
     }
 
-    List<Element> getRawProducts() {
-        Elements productItems = doc.select("#productsContainer .productLister li").select(".gridItem");
-        return new ArrayList<>(productItems);
-    }
-
     List<Product> getProducts() {
         return getRawProducts().stream()
                 .map(this::getFields)
                 .collect(Collectors.toList());
     }
 
-    private void loadDescriptionPage(String href) throws IOException, URISyntaxException {
-        descDoc = Jsoup.connect(base.resolve(new URI(href)).toString()).get();
-    }
-
     String getDescription() {
         return descDoc.selectFirst(".productText p").text();
     }
 
+    List<Element> getRawProducts() {
+        Elements productItems = doc.select("#productsContainer .productLister li").select(".gridItem");
+        return new ArrayList<>(productItems);
+    }
+
     private Product getFields(Element element) {
         try {
-            loadDescriptionPage(element.selectFirst("h3 a").attr("href"));
-            String title = element.selectFirst("h3").text();
+            final Element titleLink = element.selectFirst("h3");
+            loadDescriptionPage(titleLink.selectFirst("a").attr("href"));
+
             String rawUnitPrice = element.selectFirst(".pricePerUnit").text();
             double unitPrice = Double.valueOf(rawUnitPrice.replaceAll("£([^/]+)/unit", "$1"));
             String description = getDescription();
-            return new Product(title, getKcalPer100g(), unitPrice, description);
+
+            return new Product(titleLink.text(), getKcalPer100g(), unitPrice, description);
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException("Failed to load description", e);
         }
+    }
+
+    private void loadDescriptionPage(String href) throws IOException, URISyntaxException {
+        descDoc = Jsoup.connect(base.resolve(new URI(href)).toString()).get();
     }
 
     void setDescDoc(Document descDoc) {
